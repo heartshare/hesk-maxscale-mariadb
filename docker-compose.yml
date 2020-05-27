@@ -60,7 +60,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: 'b1gs3cr3t'
   #
-  # How makes the dirty job
+  # Who makes the dirty job
   #
   maxscale:
     container_name: 'maxscale'
