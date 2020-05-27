@@ -1,0 +1,78 @@
+[mdb0]
+type=server
+address=mdb0
+port=3306
+protocol=MariaDBBackend
+
+[mdb1]
+type=server
+address=mdb1
+port=3306
+protocol=MariaDBBackend
+
+[mdb2]
+type=server
+address=mdb2
+port=3306
+protocol=MariaDBBackend
+
+# Monitor for the servers
+# This will keep MaxScale aware of the state of the servers.
+# MySQL Monitor documentation:
+# https://github.com/mariadb-corporation/MaxScale/blob/2.4/Documentation/Monitors/MariaDB-Monitor.md
+
+[MariaDB-Monitor]
+type=monitor
+module=mariadbmon
+servers=mdb0,mdb1,mdb2
+user=monitor_user
+password=m0ns3cr3t
+replication_user=repl_user
+replication_password=r3ps3cr3t
+failcount=3
+backend_connect_timeout=3
+backend_write_timeout=3
+backend_read_timeout=3
+auto_failover=true
+auto_rejoin=true
+enforce_read_only_slaves=1
+
+# Service definitions
+# Service Definition for a read-only service and a read/write splitting service.
+
+# ReadConnRoute documentation:
+# https://github.com/mariadb-corporation/MaxScale/blob/2.4/Documentation/Routers/ReadConnRoute.md
+
+[Read-Only-Service]
+type=service
+router=readconnroute
+servers=mdb0,mdb1,mdb2
+user=srv_user
+password=5rvs3cr3t
+router_options=slave
+
+# ReadWriteSplit documentation:
+# https://github.com/mariadb-corporation/MaxScale/blob/2.4/Documentation/Routers/ReadWriteSplit.md
+
+[Read-Write-Service]
+type=service
+router=readwritesplit
+servers=mdb0,mdb1,mdb2
+user=srv_user
+password=5rvs3cr3t
+master_failure_mode=fail_on_write
+
+# Listener definitions for the services
+# Listeners represent the ports the services will listen on.
+
+[Read-Only-Listener]
+type=listener
+service=Read-Only-Service
+protocol=MySQLClient
+port=4008
+
+[Read-Write-Listener]
+type=listener
+service=Read-Write-Service
+protocol=MySQLClient
+port=4006
