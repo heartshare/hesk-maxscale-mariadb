@@ -1,0 +1,91 @@
+version: '3'
+
+networks:
+  mdb:
+
+services:
+  #
+  # It will start as master node
+  #
+  mdb0:
+    container_name: 'mdb-0'
+    image: 'mariadb:10'
+    networks:
+    - mdb
+    environment:
+      MYSQL_ROOT_PASSWORD: 'b1gs3cr3t'
+    ports:
+    - '4000:3306'
+    command: mysqld --log-bin=mariadb-bin --binlog-format=ROW --server-id=3000 --log-slave-updates
+    volumes:
+    - './mariadb/rootfs/docker-entrypoint-initdb.d/users.sql:/docker-entrypoint-initdb.d/users.sql:ro'
+  #
+  # It will start as slave node
+  #
+  mdb1:
+    container_name: 'mdb-1'
+    image: 'mariadb:10'
+    networks:
+    - mdb
+    environment:
+      MYSQL_ROOT_PASSWORD: 'b1gs3cr3t'
+    ports:
+    - '4001:3306'
+    command: mysqld --log-bin=mariadb-bin --binlog-format=ROW --server-id=3001 --log-slave-updates
+    volumes:
+    - './mariadb/rootfs/docker-entrypoint-initdb.d/replication.sql:/docker-entrypoint-initdb.d/replication.sql:ro'
+  #
+  # It will start as slave node
+  #
+  mdb2:
+    container_name: 'mdb-2'
+    image: 'mariadb:10'
+    networks:
+    - mdb
+    environment:
+      MYSQL_ROOT_PASSWORD: 'b1gs3cr3t'
+    ports:
+    - '4002:3306'
+    command: mysqld --log-bin=mariadb-bin --binlog-format=ROW --server-id=3002 --log-slave-updates
+    volumes:
+    - './mariadb/rootfs/docker-entrypoint-initdb.d/replication.sql:/docker-entrypoint-initdb.d/replication.sql:ro'
+  #
+  # It is just a client to check the remote connections to the DB
+  #
+  cli:
+    container_name: 'cli'
+    image: 'mariadb:10'
+    networks:
+    - mdb
+    environment:
+      MYSQL_ROOT_PASSWORD: 'b1gs3cr3t'
+  #
+  # How makes the dirty job
+  #
+  maxscale:
+    container_name: 'maxscale'
+    build: './maxscale'
+    networks:
+    - mdb
+    depends_on:
+    - mdb0
+    - mdb1
+    - mdb2
+    ports:
+    - "4006:4006"  # readwrite port
+    - "4008:4008"  # readonly port
+    - "8989:8989"  # REST API port
+  #
+  # Hesk
+  #
+  hesk:
+    container_name: 'hesk'
+    build: './hesk'
+    volumes:
+    - './hesk_dir:/var/www/html'
+    networks:
+    - mdb
+    depends_on:
+    - maxscale
+    ports:
+    - '80:80'
